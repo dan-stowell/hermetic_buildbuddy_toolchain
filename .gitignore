@@ -1,0 +1,7 @@
+# Bazel
+bazel-*
+MODULE.bazel.lock
+
+# Never commit secrets
+*.api-key
+.env
