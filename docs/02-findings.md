@@ -1,6 +1,7 @@
 # Findings
 
-> Status: **in progress.** This document is updated as experiments run.
+> Status: **answered.** See [`04-conclusion.md`](./04-conclusion.md) for the
+> full write-up; the short version is below.
 
 See [`experiments/`](../experiments) for the runnable cases that produced these
 findings. Each experiment directory has its own `README.md` describing exactly
@@ -25,19 +26,34 @@ container are enough. (Experiment
 [01](../experiments/01-minimal-rbe): 357 actions ran remotely, verified with
 `--spawn_strategy=remote --noremote_accept_cached`.)
 
-### Open question being tested next
+### It is genuinely hermetic, not just minimally configured
 
-Experiment 01 used BuildBuddy's **default** executor image, which ships a glibc
-and dynamic loader. So it does not yet prove the toolchain is hermetic *with
-respect to the executor* — the LLVM compiler binaries or linked outputs might be
-quietly using the container's libc. Experiment
-[02](../experiments/02-restrictive-containers) re-runs the build in
-progressively more restrictive container images (down to one with no libc) to
-find what, if anything, the toolchain actually needs from the executor
-environment.
+Experiment 01 used BuildBuddy's **default** executor image (which ships a glibc),
+so on its own it only proves the *config* can be minimal. Experiment
+[02](../experiments/02-restrictive-containers) re-ran the build inside
+`gcr.io/distroless/static-debian12` — an image with **no libc, no dynamic
+loader, no shell, no compiler** — and it still succeeded (357 remote actions, no
+cache). A bogus-image control proved BuildBuddy actually used that container. So
+the toolchain carries everything (compiler, loader, libc, headers, runtimes) as
+action inputs; the executor environment is irrelevant.
 
-The container image is selected with `--remote_default_exec_properties`, which
-sets exec properties for the default platform **without defining a custom
-platform** — so the "minimal config" property is preserved while we vary the
-environment.
+The container image was selected with `--remote_default_exec_properties`, which
+sets exec properties on the default platform **without defining a custom
+platform** — so the "minimal config" property held throughout.
+
+### The contrast confirms the toolchain is what does the work
+
+Experiment [03](../experiments/03-no-toolchain-contrast) removed the hermetic
+toolchain. Bazel's auto-detected toolchain baked in the client's `/bin/gcc` and
+failed on the executor — in the restrictive image *and* in BuildBuddy's default
+image (`executable file /bin/gcc not found`). That is the exact historical
+failure `buildbuddy-io/buildbuddy-toolchain` existed to fix (by matching the
+executor image). A hermetic toolchain fixes it by making the executor
+irrelevant.
+
+### Scope
+
+Validated for Linux x86_64 → Linux x86_64, C/C++ (`abseil-cpp`), on Bazel 9.1.1.
+Other languages/cross-compiles/system-tool-dependent rules may still need
+platform work — see [conclusion caveats](./04-conclusion.md#caveats--scope).
 

@@ -1,0 +1,22 @@
+"""Experiment 03: the contrast. NO hermetic toolchain registered.
+
+Identical to experiment 01 EXCEPT there is no `bazel_dep(name = "llvm", ...)`
+and no `register_toolchains(...)`. Bazel falls back to its auto-detected C/C++
+toolchain, which probes the *client* machine and bakes in assumptions about the
+compiler/libc available on the executor.
+
+The point: show that this fails (or is fragile) on a restrictive executor image,
+which is exactly the historical reason buildbuddy-io/buildbuddy-toolchain (or any
+RBE-matched toolchain) was needed.
+"""
+
+module(
+    name = "no_toolchain_contrast",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "abseil-cpp", version = "20260526.0")
+bazel_dep(name = "rules_cc", version = "0.2.18")
+
+# Deliberately NO llvm dep and NO register_toolchains(): use Bazel's
+# auto-detected host C/C++ toolchain.
