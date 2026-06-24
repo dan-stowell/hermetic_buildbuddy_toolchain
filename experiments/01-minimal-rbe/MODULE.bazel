@@ -1,0 +1,27 @@
+"""Experiment 01: minimal BuildBuddy RBE with a hermetic LLVM toolchain.
+
+The hypothesis: with a fully hermetic toolchain registered, we should be able to
+build on BuildBuddy RBE with NO custom platforms, NO extra_execution_platforms,
+and NO exec_properties -- just remote flags in .bazelrc.
+"""
+
+module(
+    name = "minimal_rbe",
+    version = "0.0.0",
+)
+
+# The test case.
+bazel_dep(name = "abseil-cpp", version = "20260526.0")
+
+# Bazel 9 removed native cc_* rules; they now load from rules_cc.
+# Pinned to match what llvm 0.7.3 expects: 0.2.20 renamed an internal target
+# (use_libtool_on_macos_setting) that llvm 0.7.3 still references, which breaks
+# toolchain analysis. 0.2.18 is the version llvm 0.7.3 declares.
+bazel_dep(name = "rules_cc", version = "0.2.18")
+
+# The fully hermetic LLVM C/C++ toolchain (github.com/hermeticbuild/hermetic-llvm).
+bazel_dep(name = "llvm", version = "0.7.3")
+
+# Register every supported exec/target combination. This is the "quickest"
+# setup from the hermetic-llvm README -- no platform definitions of our own.
+register_toolchains("@llvm//toolchain:all")
